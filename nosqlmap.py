@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 # NoSQLMap Copyright 2012-2017 NoSQLMap Development team
 # See the file 'doc/COPYING' for copying permission
 
@@ -137,7 +137,7 @@ def build_post_data(postDataIn):
     return postData
 
 def attack(args):
-    platform = args.platform 
+    platform = args.platform
     victim = args.victim
     webPort = args.webPort
     dbPort = args.dbPort
@@ -149,7 +149,7 @@ def attack(args):
     httpMethod = args.httpMethod
     requestHeaders = build_request_headers(args.requestHeaders)
     postData = build_post_data(args.postData)
-    
+
     if args.attack == 1:
         if platform == "MongoDB":
             nsmmongo.netAttacks(victim, dbPort, myIP, myPort, args)
@@ -296,10 +296,15 @@ def options():
 
         elif select == "3":
             uri = raw_input("Enter URI Path (Press enter for no URI): ")
-            #Ensuring the URI path always starts with / and causes less errors
-            if uri[0] != "/":
+            #Ensuring the URI path always starts with / and accepts null values
+            if len(uri) == 0:
+                uri = "Not Set"
+                print "\nURI Not Set." "\n"
+                optionSet[2] = False
+
+            elif uri[0] != "/":
                 uri = "/" + uri
-            print "\nURI Path set to " + uri + "\n"
+                print "\nURI Path set to " + uri + "\n"
             optionSet[2] = True
 
         elif select == "4":
@@ -337,7 +342,7 @@ def options():
                     print "POST request set"
                     optionSet[3] = True
                     postDataIn = raw_input("Enter POST data in a comma separated list (i.e. param name 1,value1,param name 2,value2)\n")
-                    build_post_data(postDataIn)
+                    postData = build_post_data(postDataIn)
                     httpMethod = "POST"
 
                 else:
@@ -400,46 +405,51 @@ def options():
 
         elif select == "0":
             loadPath = raw_input("Enter file name to load: ")
+            csvOpt = []
             try:
-                fo = open(loadPath,"r" )
-                csvOpt = fo.readlines()
-                fo.close()
-                optList = csvOpt[0].split(",")
-                victim = optList[0]
-                webPort = optList[1]
-                uri = optList[2]
-                httpMethod = optList[3]
-                myIP = optList[4]
-                myPort = optList[5]
-                verb = optList[6]
-                https = optList[7]
-                
-                # saved headers position will depend of the request verb
-                headersPos= 1
+                with open(loadPath,"r") as fo:
+                    for line in fo:
+                        csvOpt.append(line.rstrip())
+            except IOError as e:
+                print "I/O error({0}): {1}".format(e.errno, e.strerror)
+                raw_input("error reading file.  Press enter to continue...")
+                return
 
-                if httpMethod == "POST":
-                    postData = ast.literal_eval(csvOpt[1])
-                    headersPos = 2
-                    
-                requestHeaders = ast.literal_eval(csvOpt[headersPos])
+            optList = csvOpt[0].split(",")
+            victim = optList[0]
+            webPort = optList[1]
+            uri = optList[2]
+            httpMethod = optList[3]
+            myIP = optList[4]
+            myPort = optList[5]
+            verb = optList[6]
+            https = optList[7]
 
-                # Set option checking array based on what was loaded
-                x = 0
-                for item in optList:
-                    if item != "Not Set":
-                        optionSet[x] = True
-                    x += 1
-            except:
-                print "Couldn't load options file!"
+            # saved headers position will depend of the request verb
+            headersPos= 1
+
+            if httpMethod == "POST":
+                postData = ast.literal_eval(csvOpt[1])
+                headersPos = 2
+
+            requestHeaders = ast.literal_eval(csvOpt[headersPos])
+
+            # Set option checking array based on what was loaded
+            x = 0
+            for item in optList:
+                if item != "Not Set":
+                    optionSet[x] = True
+                x += 1
 
         elif select == "a":
             loadPath = raw_input("Enter path to Burp request file: ")
-
+            reqData = []
             try:
-                fo = open(loadPath,"r")
-                reqData = fo.readlines()
-
-            except:
+                with open(loadPath,"r") as fo:
+                    for line in fo:
+                        reqData.append(line.rstrip())
+            except IOError as e:
+                print "I/O error({0}): {1}".format(e.errno, e.strerror)
                 raw_input("error reading file.  Press enter to continue...")
                 return
 
@@ -473,28 +483,27 @@ def options():
                 header = line.split(": ");
                 requestHeaders[header[0]] = header[1].strip()
 
-            victim = reqData[1].split( " ")[1].replace("\r\n","")
+            victim = reqData[1].split( " ")[1]
             optionSet[0] = True
-            uri = methodPath[1].replace("\r\n","")
+            uri = methodPath[1]
             optionSet[2] = True
 
         elif select == "b":
             savePath = raw_input("Enter file name to save: ")
             try:
-                fo = open(savePath, "wb")
-                fo.write(str(victim) + "," + str(webPort) + "," + str(uri) + "," + str(httpMethod) + "," + str(myIP) + "," + str(myPort) + "," + verb + "," + https)
+                with open(savePath, "wb") as fo:
+                    fo.write(str(victim) + "," + str(webPort) + "," + str(uri) + "," + str(httpMethod) + "," + str(myIP) + "," + str(myPort) + "," + verb + "," + https)
 
-                if httpMethod == "POST":
-                    fo.write(",\n"+ str(postData))
-                fo.write(",\n" + str(requestHeaders) )
-                fo.close()
-                print "Options file saved!"
-            except:
+                    if httpMethod == "POST":
+                        fo.write(",\n"+ str(postData))
+                    fo.write(",\n" + str(requestHeaders) )
+                    print "Options file saved!"
+            except IOError:
                 print "Couldn't save options file."
 
         elif select == "h":
             reqHeadersIn = raw_input("Enter HTTP Request Header data in a comma separated list (i.e. header name 1,value1,header name 2,value2)\n")
-            build_request_headers(reqHeadersIn)
+            requestHeaders = build_request_headers(reqHeadersIn)
 
         elif select == "x":
             return
@@ -508,7 +517,7 @@ def build_parser():
     parser.add_argument("--myIP",help="Set my local platform/Shell IP")
     parser.add_argument("--myPort",help="Set my local platform/Shell port", type=int)
     parser.add_argument("--webPort", help="Set web app port ([1 - 65535])", type=int)
-    parser.add_argument("--uri", help="Set App Path. For example '/a-path/'. Final URI will be [https option]://[victim option]:[webPort option]/[uri option]") 
+    parser.add_argument("--uri", help="Set App Path. For example '/a-path/'. Final URI will be [https option]://[victim option]:[webPort option]/[uri option]")
     parser.add_argument("--httpMethod", help="Set HTTP Request Method", choices=["GET","POST"], default="GET")
     parser.add_argument("--https", help="Toggle HTTPS", choices=["ON", "OFF"], default="OFF")
     parser.add_argument("--verb", help="Toggle Verbose Mode", choices=["ON", "OFF"], default="OFF")
@@ -520,7 +529,7 @@ def build_parser():
         group = parser.add_argument_group(module.__name__)
         for arg in module.args():
             group.add_argument(arg[0], help=arg[1])
-    
+
     return parser
 
 def signal_handler(signal, frame):
